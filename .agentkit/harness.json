@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "documents": [
+    "project/docs/requirements.md",
+    "project/docs/design.md",
+    "project/docs/detail.md"
+  ],
+  "managed": [
+    "project/app/**",
+    "project/checks/**"
+  ],
+  "require_tdd": true,
+  "test_files": [
+    "project/checks/verify.py"
+  ],
+  "verifier": {
+    "format": "junit",
+    "command": {
+      "argv": [
+        "{python}",
+        "project/checks/verify.py",
+        "{result}"
+      ],
+      "timeout": 20
+    }
+  },
+  "policy": {
+    "allowed_roles": [
+      "read",
+      "check"
+    ],
+    "forbid_git_push": true,
+    "commands": {
+      "read-result": {
+        "role": "read",
+        "command": {
+          "argv": [
+            "{python}",
+            "-c",
+            "from pathlib import Path; print(Path('project/app/result.json').read_text())"
+          ]
+        }
+      },
+      "push": {
+        "role": "publish",
+        "command": {
+          "argv": [
+            "git",
+            "push"
+          ]
+        }
+      }
+    }
+  }
+}
