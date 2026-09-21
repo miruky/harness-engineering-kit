@@ -3,6 +3,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import os
+from unittest.mock import patch
 from agentkit import engine
 from agentkit.core import KitError, load_json, write_json, atomic_write, digest
 from agentkit.integrations import install_git_hooks, hooks_configuration
@@ -10,6 +12,16 @@ from test_core import ProjectCase, REPO
 
 
 class HarnessWorkflow(ProjectCase):
+    def test_existing_global_git_hooks_configuration_is_preserved(self):
+        if not shutil.which("git"):
+            self.skipTest("Git is unavailable")
+        subprocess.run(["git", "init", str(self.root)], check=True, capture_output=True)
+        config = Path(self.tmp.name) / "isolated-global-gitconfig"
+        content = '[core]\n hooksPath = /existing-global-hooks\n'
+        config.write_text(content)
+        with patch.dict(os.environ, {"GIT_CONFIG_GLOBAL":str(config)}):
+            self.assertCode("ALREADY_EXISTS", lambda: install_git_hooks(self.root, REPO / "kit.py"))
+        self.assertEqual(config.read_text(), content)
     def green(self):
         engine.tdd(self.root, "red", "CHG-TEST")
         value = load_json(self.root, "project/app/result.json")
