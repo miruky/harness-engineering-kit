@@ -95,7 +95,7 @@ class HarnessWorkflow(ProjectCase):
             self.skipTest("Git is unavailable")
         remote = Path(self.tmp.name) / "remote.git"
         def git(*args, cwd=None, check=True):
-            return subprocess.run(["git", *args], cwd=cwd or self.root, capture_output=True, text=True, check=check)
+            return subprocess.run(["git", *args], cwd=cwd or self.root, capture_output=True, text=True, encoding="utf-8", check=check)
         git("init", "--initial-branch=main")
         git("config", "user.name", "Kit Test")
         git("config", "user.email", "test@example.invalid")
