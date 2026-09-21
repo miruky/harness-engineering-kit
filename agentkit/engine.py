@@ -11,7 +11,7 @@ import uuid
 from .core import (KitError, require, object_fields, strings, number, identifier, load_json,
                    digest, file_hash, text, expand, snapshot, confined, write_json,
                    ProjectLock, state_path, now, check_fingerprint, read_bytes)
-from .runtime import execute, validate_command, argv_for, verify, junit
+from .runtime import execute, validate_command, argv_for, verify, junit, retained_junit
 
 CONFIG = ".agentkit/harness.json"
 LEVELS = {"requirement": 0, "basic": 1, "detail": 2}
@@ -194,12 +194,7 @@ def _code_snapshot(root, report):
 
 
 def _retained_evidence(root, evidence):
-    record = evidence.get("result", {}).get("junit", {})
-    require(isinstance(record.get("report_path"), str), "Missing retained JUnit evidence", "INVALID_EVIDENCE")
-    parsed = junit(read_bytes(root, record["report_path"]))
-    for key in ("sha256", "test_ids", "counts", "assertion_failures"):
-        check_fingerprint(record.get(key), parsed[key], "retained JUnit " + key)
-    return parsed
+    return retained_junit(root, evidence.get("result", {}).get("junit", {}))
 
 
 def tdd(root, phase, change):
