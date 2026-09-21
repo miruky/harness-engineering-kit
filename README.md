@@ -1,41 +1,62 @@
-# Harness Engineering Kit
+# ハーネスエンジニアリングの導入テンプレート
 
-Trace requirements to artifacts, bind Red/Green evidence to exact inputs, and gate declared actions.
+要件・設計・実装・テストの対応を管理し、変更後に確認が必要な文書を検出します。テストの失敗から成功までの記録と、実行を許可するコマンドの設定も扱います。
 
-[日本語](README.ja.md) · [Workflow and commands](docs/USAGE.md) · [Design and boundaries](docs/ARCHITECTURE.md) · [Codex / Claude Code](docs/INTEGRATIONS.md)
+[英語版](README.en.md) · [操作手順](docs/USAGE.md) · [設計と制約](docs/ARCHITECTURE.md)
 
-## Run after cloning
+## クローン後に試す
 
-Prerequisites: Git and **Python 3.10+**. No pip/npm install, API key or model subscription is needed for the local example. Your application can use any language, framework or test runner.
+必要なものはGitと **Python 3.10以上** です。Pythonはこのツールを動かすために使い、対象アプリの開発言語は限定していません。付属の利用例には、追加パッケージやAPIキーは不要です。
+
+クローンしたディレクトリで実行してください。
 
 ```sh
-git clone <repository-url> harness-engineering-kit
-cd harness-engineering-kit
+# 実行環境と付属の利用例を確認します
 python3 kit.py doctor
 python3 kit.py demo
-python3 kit.py check
 ```
 
-On Windows use `py -3 kit.py ...`, `dev.cmd ...`, or `./dev.ps1 ...`. On macOS/Linux, `./dev ...` is a short form. Set `AGENTKIT_PYTHON` only if you need a particular interpreter.
+Windowsでは `python3` を `py -3` へ置き換えてください。`dev.cmd` やPowerShellの `./dev.ps1` も使えます。macOS・Linuxでは `./dev` が短い呼び出し方です。
 
-`demo` executes a complete, model-free example in an isolated temporary project and checks expected rejections. `check` tests the toolkit itself. Neither command claims that your own product has been verified. See the documented project commands to verify your own outputs with independent checks.
+`demo` は一時的な作業場所で動きます。クローンしたテンプレートの設定や成果物を、確認済みの状態へ変更しません。
 
-## Use your own project
+## 仕様と検証を管理する
 
-Create a working starter with `python3 kit.py new ../my-workspace`, or inspect a non-overwriting installation plan with `python3 kit.py install --target ../existing-project`. Add `--apply` to install the runtime and an example configuration. Existing instructions, active configuration and hooks are preserved. Adapt the file paths and verification argv to your project before a real run.
+Markdownの冒頭に文書ID、上位の要件・設計、対応する実装・テストのパスを記載します。`.agentkit/harness.json` で対象範囲と検証コマンドを指定します。
 
-## What the names mean
+```sh
+# 変更箇所と、確認が必要な文書を確認します
+python3 kit.py impact
+python3 kit.py inspect
+```
 
-Context engineering selects and maintains information available to the model. A harness supplies the runtime, tools, permissions and checks that carry out and constrain work. Writing “do not git push” belongs to instructions/context; enforcing a restriction in a runner, credential policy or repository rule is part of the execution system. These concerns overlap.
+初期状態には確認済みの記録がないため、`inspect` は未確認として扱います。付属例の流れは `demo`、実際の変更手順は [操作手順](docs/USAGE.md) を参照してください。
 
-This kit is one practical implementation, not an official standard or a guarantee of correctness. Review the documented [trust boundaries](docs/ARCHITECTURE.md). In particular, local files/hooks editable by the same account are not an unbreakable security boundary.
+TDDの記録にはJUnit形式の出力を使います。起動エラーや未実行のテストを失敗の証拠にせず、同じテストが失敗してから成功したことを確認します。設計の内容やテストの十分さは、人が判断する必要があります。
 
-## Included
+GitフックとCodex・Claude Codeのフックは任意で導入します。生成した設定だけでは有効にならず、既存設定との調整やツール側の信頼設定が必要です。ローカルフックは利用者が回避できるため、サーバー側の権限管理を代替しません。
 
-- Working project, explicit JSON configuration and deterministic demos.
-- Portable argv adapters with no language-specific build-system detection.
-- Persistent local evidence and meaningful negative-path tests.
-- Pinned CI for Linux, macOS and Windows.
-- Sources, licenses and reproducible validation instructions.
+## 自分のプロジェクトへ導入する
 
-MIT licensed. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+新しく始める場合は、空の作業場所を作成できます。
+
+```sh
+# テンプレートと実行ツールを新しい作業場所へコピーします
+python3 kit.py new ../my-project
+```
+
+既存のプロジェクトへ追加する場合は、追加予定のファイルを確認してから適用します。
+
+```sh
+# 追加内容を確認してから適用します
+python3 kit.py install --target ../existing-project
+python3 kit.py install --target ../existing-project --apply
+```
+
+既存のAGENTS.md、CLAUDE.md、設定、フックは上書きしません。`.agentkit/harness.example.json` のパスやコマンドを実際のプロジェクトへ合わせ、`.agentkit/harness.json` として保存してください。導入先のディレクトリでは `python3 .agentkit/tools/harness/kit.py --root . inspect` で設定を確認できます。
+
+## 設計上の範囲
+
+このテンプレートは手元で使う開発用ツールです。ローカルの設定や記録は、利用者自身が変更できます。実行権限を制限する場合は、認証情報や実行環境側でも制御してください。詳しい対応範囲は [設計と制約](docs/ARCHITECTURE.md) に記載しています。
+
+ツール自体を変更したときの検査は `python3 kit.py check` で実行できます。ライセンスは [MIT](LICENSE) です。第三者のコードの出典は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
