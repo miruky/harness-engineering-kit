@@ -10,8 +10,8 @@ import uuid
 
 from .core import (KitError, require, object_fields, strings, number, identifier, load_json,
                    digest, file_hash, text, expand, snapshot, confined, write_json,
-                   ProjectLock, state_path, now, check_fingerprint)
-from .runtime import execute, validate_command, argv_for, verify
+                   ProjectLock, state_path, now, check_fingerprint, read_bytes)
+from .runtime import execute, validate_command, argv_for, verify, junit
 
 CONFIG = ".agentkit/harness.json"
 LEVELS = {"requirement": 0, "basic": 1, "detail": 2}
@@ -193,6 +193,15 @@ def _code_snapshot(root, report):
             if a["role"] in ("implementation", "test", "configuration")}
 
 
+def _retained_evidence(root, evidence):
+    record = evidence.get("result", {}).get("junit", {})
+    require(isinstance(record.get("report_path"), str), "Missing retained JUnit evidence", "INVALID_EVIDENCE")
+    parsed = junit(read_bytes(root, record["report_path"]))
+    for key in ("sha256", "test_ids", "counts", "assertion_failures"):
+        check_fingerprint(record.get(key), parsed[key], "retained JUnit " + key)
+    return parsed
+
+
 def tdd(root, phase, change):
     require(phase in ("red", "green"), "Unknown TDD phase")
     identifier(change, "change id")
@@ -206,6 +215,10 @@ def tdd(root, phase, change):
         red = None
         if phase == "green":
             red = load_json(root, red_path)
+            require(red.get("phase") == "red" and red.get("change") == change, "Invalid Red identity", "INVALID_EVIDENCE")
+            parsed_red = _retained_evidence(root, red)
+            require(parsed_red["counts"]["failure"] > 0 and parsed_red["counts"]["failure"] == parsed_red["assertion_failures"],
+                    "Red does not contain assertion evidence", "INVALID_EVIDENCE")
             check_fingerprint(red.get("configuration_sha256"), digest(cfg), "TDD configuration")
             check_fingerprint(red.get("test_hashes"), tests, "tests since Red")
             if confined(root, green_path).exists():
@@ -239,6 +252,8 @@ def current_green(root, change, report):
     cfg = report["configuration"]
     require(evidence.get("phase") == "green" and evidence.get("result", {}).get("ok") is True,
             "Invalid Green record", "INVALID_EVIDENCE")
+    parsed = _retained_evidence(root, evidence)
+    require(parsed["counts"]["passed"] > 0 and parsed["counts"]["failure"] == 0, "Green report is not passing", "INVALID_EVIDENCE")
     check_fingerprint(evidence.get("configuration_sha256"), digest(cfg), "Green configuration")
     check_fingerprint(evidence.get("test_hashes"), snapshot(root, cfg["test_files"]), "Green tests")
     check_fingerprint(evidence.get("code_hashes"), _code_snapshot(root, report), "Green artifacts")

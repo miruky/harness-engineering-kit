@@ -39,6 +39,13 @@ class HarnessWorkflow(ProjectCase):
     def test_green_cannot_consume_the_same_red_twice(self):
         self.green()
         self.assertCode("STALE_EVIDENCE", lambda: engine.tdd(self.root, "green", "CHG-TEST"))
+    def test_retained_report_is_required_and_cannot_be_replaced(self):
+        self.green()
+        evidence = load_json(self.root, ".agentkit/state/harness/green-CHG-TEST.json")
+        path = evidence["result"]["junit"]["report_path"]
+        self.assertTrue((self.root / path).is_file())
+        atomic_write(self.root, path, b'<testsuite><testcase name="different"/></testsuite>')
+        self.assertCode("STALE_INPUTS", lambda: engine.current_green(self.root, "CHG-TEST", engine.structure(self.root)))
     def test_startup_failure_is_not_red(self):
         p = self.root / "project/checks/verify.py"
         p.write_text("syntax error without a valid report!\n")
